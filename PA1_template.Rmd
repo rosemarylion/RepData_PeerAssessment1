@@ -8,18 +8,69 @@ output:
 
 ## Loading and preprocessing the data
 
-
+Assuming the user is in the correct working directory, data is loaded like this:
+```{r}
+data<-read.csv("activity.csv")
+```
+The data is not processed or transformed.
 
 ## What is mean total number of steps taken per day?
 
-
+The following code produces a histogram of the total number of steps taken each day: 
+```{r}
+library(plyr)
+Total<-ddply(data,~date,summarise,total=sum(steps))
+barplot(Total$total, xlab="Date", ylab="Total", main="Total steps per day")
+```
+The mean and median number of steps taken per day are calculated by this code:
+```{r}
+ddply(data,~date,summarise,mean=mean(steps, na.rm = TRUE),median=median(steps, na.rm = TRUE))
+```
 
 ## What is the average daily activity pattern?
-
-
+This code calculates a time series plot for the average number of steps taken each day (averaged across all days) for each five-minute interval.
+```{r}
+mean_interval<-ddply(data,~interval,summarise, mean=mean(steps, na.rm = TRUE))
+plot(mean_interval, type="l", xlab= "Interval", ylab= "Average number of steps (across all days)")
+```
+This code determines the interval with the largest average number of steps, averaged across all days:
+```{r}
+mean_interval$interval[mean_interval$mean == max(mean_interval$mean)]
+```
 
 ## Imputing missing values
+To calcalculate the number of rows featuring 'NA' in the 'steps' column:
+```{r}
+length(which(is.na(data$steps)))
+```
 
+NAs are then replaced with the median value for that particular interval, and a new dataset is produced:
 
+```{r}
+library("data.table")
+data2<-data.table(data)
+data2[,steps := ifelse(is.na(steps), median(steps, na.rm=TRUE), steps), by=interval]
+write.csv(data2, "activity_imputed.csv")
+```
+
+Calulcating the new mean and median from the new dataset:
+
+```{r}
+ddply(data2,~date,summarise,mean=mean(steps, na.rm = TRUE),median=median(steps, na.rm = TRUE))
+```
+
+Compare these values to those shown above to demonstrate the effect of imputing missing values.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+First, a new column is added to the dataset with the day of the week listed:
+```{r}
+data2$day <- weekdays(as.Date(data2$date))
+```
+Then these values are replaced with either "Weekend" or "Weekday" as appropriate:
+```{r}
+data2$day[data2$day == "Sunday"] <- "Weekend"
+data2$day[data2$day == "Saturday"] <- "Weekend"
+data2$day[data2$day !== "Weekend"] <- "Weekday"
+```
+
